@@ -1,6 +1,6 @@
 # Verpleeghuis Fruta
 
-Deze app toont de zorgdatabase van het fictieve verpleeghuis Fruta.  
+Dit project toont de zorgdatabase van het fictieve verpleeghuis Fruta, als Streamlit-app in Snowflake.
 De volledig synthetische data omvat cliëntprofielen, scenario's en automatisch gegenereerde zorgrapportages, en biedt een veilige testomgeving voor AI in de langdurige zorg.
 
 Zowel de app als de dataset maken deel uit van mijn leerproces. De code kan rommelig zijn, met inconsistent of ontbrekend commentaar. En af en toe zal je ChatGPT herkennen ;-)
@@ -10,148 +10,58 @@ Voel je vrij om code en ideeën te gebruiken. Ik zou het wel leuk vinden om iets
 - [Hugging Face](https://huggingface.co/ekrombouts)
 - [GitHub](https://github.com/ekrombouts)
 
-## Setup en installatie
+## Wat zit erin
 
-### PostgreSQL Docker Setup
-De PostgreSQL-database kan draaien in een Docker-container, maar lokaal installeren kan ook.
-Onderstaande stappen beschrijven de Docker-variant om snel aan de slag te gaan met een kant-en-klare setup. Uiteraard moet Docker hiervoor zijn geinstalleerd op je systeem. 
+| Map / bestand | Wat |
+|---|---|
+| `fruta_app/` | De Streamlit-app voor Streamlit in Snowflake, met de tabs Cliëntprofiel, Scenario, Rapportages, Visualisatie en Info |
+| `notebooks/01_populate_snowflake.ipynb` | Laadt de [Fruta-datasets van Hugging Face](https://huggingface.co/collections/ekrombouts/fruta-680349c74db35a450da33f64) in Snowflake (lokaal) |
+| `notebooks/02_embeddings_local.ipynb` | Maakt embeddings van de rapportages met `snowflake-arctic-embed-l-v2.0` (lokaal) |
+| `notebooks/03_reduce_embeddings.ipynb` | Traint UMAP en zet de rapportages op een 2D-kaart voor de visualisatie (in Snowflake) |
+| `notebooks/1X_*.ipynb` | Experiment: het embeddingmodel aanpassen aan de taal van zorgrapportages (zie verderop) |
+| `notebooks/snowflake_setup.sql` | Eenmalige setup van database en warehouse |
 
-PostgreSQL wordt hier geconfigureerd als een eenvoudige vector database, geschikt voor similarity search met embeddings. Hiervoor wordt de `vector` extensie gebruikt. Deze wordt automatisch geactiveerd in de code, maar let op: Als je een eigen database-installatie gebruikt kunnen er extra stappen nodig zijn. Voor meer informatie over het gebruik van PostgreSQL als vector database met pgvector, kun je [deze](https://www.timescale.com/blog/postgresql-as-a-vector-database-create-store-and-query-openai-embeddings-with-pgvector) tutorial raadplegen.
+## Setup
 
-#### 1. Voorbereiding
+### Vereisten
+- Een Snowflake-account. Een trialaccount werkt, met beperkingen (zie verderop).
+- [uv](https://docs.astral.sh/uv/) voor de lokale Python-omgeving.
 
-Maak een gedeeld netwerk aan (eenmalig):
+### 1. Snowflake voorbereiden
+Voer `notebooks/snowflake_setup.sql` uit in een SQL-worksheet in Snowsight. Dit maakt de database `FRUTA` en het warehouse `COMPUTE_WH` aan.
 
+### 2. Lokale omgeving
 ```bash
-docker network create fruta-net
+uv sync
+```
+Dit maakt een `.venv` aan met de juiste Python-versie en alle pakketten. Kies die `.venv` als kernel voor de notebooks.
+
+Maak in de root een `.env` met je Snowflake-gegevens:
+```
+SNOWFLAKE_ACCOUNT=...
+SNOWFLAKE_USER=...
+SNOWFLAKE_PASSWORD=...
 ```
 
-Dit zorgt ervoor dat eventuele toekomstige containers kunnen communiceren met de database.
+### 3. Data laden en voorbereiden
+Draai de notebooks op volgorde:
 
-#### 2. Instellen databasewachtwoord
+1. **`01_populate_snowflake.ipynb`** (lokaal): schrijft de tabellen `PROFILES`, `SCENARIOS`, `RECORDS` en `NOTES` naar `FRUTA.PUBLIC`.
+2. **`02_embeddings_local.ipynb`** (lokaal): maakt `RECORD_EMBEDDINGS` en `NOTE_EMBEDDINGS`. Dit gebeurt lokaal, omdat `AI_EMBED` niet beschikbaar is op een trialaccount. Bij opnieuw draaien worden alleen ontbrekende embeddings gemaakt.
+3. **`03_reduce_embeddings.ipynb`** (in Snowflake): traint UMAP op de `NOTES` en zet ook de `RECORDS` op dezelfde kaart. Dit maakt `NOTE_UMAP_2D` en `RECORD_UMAP_2D`, en bewaart het model en een plot per categorie op de stage `@FRUTA.PUBLIC.MODELS`. Vereist `umap-learn`, `matplotlib` en `plotly`.
 
-Kopieer het voorbeeldbestand:
+### 4. De app
+Deploy `fruta_app/` als Streamlit-app in Snowflake, bijvoorbeeld vanuit een Workspace die aan deze repository gekoppeld is. `fruta_app/snowflake.yml` beschrijft de app (warehouse `COMPUTE_WH`, compute pool `SYSTEM_COMPUTE_POOL_CPU`).
 
-```bash
-cp .envexample .env
-```
+De app leest `PROFILES`, `SCENARIOS`, `RECORDS`, `RECORD_UMAP_2D` en `NOTE_UMAP_2D`. De tab Visualisatie toont de rapportages van een cliënt op de 2D-kaart, met de `NOTES` per onderwerp als vage achtergrond.
 
-Pas in .env de waarde van DB_PASSWORD aan naar een zelfgekozen wachtwoord.
-Docker Compose leest deze variabele automatisch in (zorg wel dat ze beide in de root-folder blijven staan).
+## Beperkingen van een trialaccount
+Cortex AI-functies zoals `AI_COMPLETE` en `AI_EMBED` werken niet op een trialaccount. Daarom:
+- worden de embeddings lokaal gemaakt (`02_embeddings_local.ipynb`);
+- staan de tabs **Valrisico** en **Vraag** (nog) niet in de app. Die gebruikten een LLM. De eerdere versie van de app (PostgreSQL + OpenAI), met deze functies, staat in de git-geschiedenis.
 
-#### 3. Start de Database
+## Experiment: embeddings die de zorgtaal beter verstaan
+Het plan staat bovenaan `notebooks/10_meetlat_embeddings.ipynb`. In het kort: het embeddingmodel verder trainen op zorgrapportages, met MLM en TSDAE, zodat het jargon en schrijfwijzen beter herkent. Elk model wordt met dezelfde meetlat gemeten. De notebooks zijn genummerd als `1X`, waarbij X de stap in het plan is.
 
-Start de container:
-
-```bash
-docker compose -f docker-compose.db.yml -p fruta-db up -d
-```
-Dit bouwt een image (als die nog niet bestaat) en start een container met:
-- PostgreSQL als database
-- Een persistent volume voor opslag (fruta-db_fruta_data)
-- Een extern netwerk (fruta-net) voor koppeling met andere containers
-
-### Omgeving instellen
-
-#### 1. Virtual environment
-Maak een venv aan, activeer en installeer de requirements:
-
-Voor macOS/Linux:
-```bash
-python -m venv .venv
-source .venv/bin/activate
-
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-Voor Windows:
-```powershell
-python -m venv .venv
-.venv\Scripts\activate
-
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-#### 2. Pythonpath
-Om imports uit de app-map goed te laten werken, stel je het PYTHONPATH in.
-
-Zelf doe ik dit via de .code-workspace file (zie het voorbeeld), maar je kunt het ook handmatig doen. Dit moet je dan bij elke nieuwe terminalsessie opnieuw instellen.
-
-macOS/Linux (terminal):
-```bash
-export PYTHONPATH="$(pwd)/app"
-```
-
-Windows (PowerShell):
-```powershell
-$env:PYTHONPATH="$PWD\app"
-```
-
-Zo voorkom je importfouten.
-
-### Database vullen
-
-#### 1. Test de databaseverbinding
-
-Controleer of de verbinding werkt met:
-
-```bash
-python app/backend/database/db_connection.py
-```
-
-#### 2. Vul de Database
-
-Vul de database met de Hugging Face data via:
-
-```bash
-python scripts/01_populate_database.py
-```
-
-#### 3. Embeddings genereren
-
-We gaan nu de rapportages omzetten naar embeddings. 
-Controleer hiervoor eerst de settings in de config files ```app/backend/config/settings.py``` en ```app/backend/config/llm_config.py```.
-
-Controleer of de embedding factory werkt en de instellnigen juist staan: 
-
-```bash
-python app/backend/llm/embedding_factory.py
-```
-
-en draai vervolgens dit script:
-```bash
-python scripts/02_upsert_embeddings.py
-```
-
-De embeddings vormen de basis voor onze verdere toepassingen. 
-
-### Trainen UMAP model
-
-Gebruik het volgende script om het UMAP-model te trainen:
-
-```bash
-python scripts/03_reduce_embeddings.py
-```
-UMAP reduceert de hoog-dimensionale embeddings naar twee dimensies, zodat ze gevisualiseerd kunnen worden in een interactieve plot.
-Het getrainde model wordt opgeslagen als ```app/backend/models/notes_umap_2d.pkl``` en wordt later gebruikt in de app.
-
-De visualisatie wordt opgeslagen als html file. Daarnaast heb ik herkenbare onderwerpen getekend op een soort “landkaart”, bedoeld als achtergrond bij cliëntvisualisaties in de app. De kaart is met de hand getekend, maar zou ongeveer moeten overeenkomen met wat het script oplevert. 
-
-Open de bestanden in je browser en controleer of ze globaal overeen komen:
-```bash
-# Mac
-open output/notes_UMAP_2d_plot.html
-open app/backend/static/topic_map.png
-
-# Linux
-xdg-open output/notes_UMAP_2d_plot.html
-xdg-open app/backend/static/topic_map.png
-
-# Windows (PowerShell)
-start output/notes_UMAP_2d_plot.html
-start app/backend/static/topic_map.png
-
-```
-
+- `10_meetlat_embeddings.ipynb`: meetlat en nulmeting, met de resultaten in `EMBEDDING_EVAL` (lokaal)
+- `13_tsdae.ipynb`: TSDAE-training (lokaal). Het model komt in `models/`, buiten git.

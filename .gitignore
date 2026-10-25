@@ -27,11 +27,8 @@ dist/
 # Gegenereerde output (scripts, plots)
 output/
 
-# Getrainde modellen (o.a. TSDAE, zie notebooks/06_tsdae.ipynb)
+# Getrainde modellen (o.a. TSDAE, zie notebooks/13_tsdae.ipynb)
 models/
-
-# Groot UMAP-model (234 MB, te groot voor GitHub); opnieuw te maken met notebooks/03_reduce_embeddings.py
-app/backend/models/notes_umap_2d.pkl
 
 # Persoonlijke editorinstellingen
 *.code-workspace

@@ -6,7 +6,7 @@ dependencies = [
     "datasets>=5.1.0",
     "pandas>=2.3.3",
     "python-dotenv>=1.2.4",
-    "sentence-transformers>=6.2.0",
+    "sentence-transformers[train]>=6.2.0",
     "snowflake-snowpark-python[pandas]>=1.55.3",
 ]
 
