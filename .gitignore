@@ -1,0 +1,21 @@
+# Secrets
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Gegenereerde output (scripts, plots, Spark)
+output/
+spark-warehouse/
+
+# Groot UMAP-model (234 MB, te groot voor GitHub); opnieuw te maken met scripts/03_reduce_embeddings.py
+app/backend/models/notes_umap_2d.pkl
+
+# Persoonlijke editorinstellingen (zie Fruta.code-workspaceexample)
+Fruta.code-workspace
+
+# macOS
+.DS_Store

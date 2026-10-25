@@ -1,0 +1,17 @@
+datasets==3.5.0
+dotenv==0.9.9
+instructor==1.7.9
+numba==0.61.2
+numpy==2.2.4
+openai==1.75.0
+pandas==2.2.3
+plotly==6.0.1
+psycopg2-binary==2.9.10
+pydantic==2.11.3
+pydantic-settings==2.9.0
+pydantic_core==2.33.1
+sentence-transformers==4.1.0
+SQLAlchemy==2.0.40
+streamlit==1.44.1
+umap-learn==0.5.7
+watchdog==6.0.0

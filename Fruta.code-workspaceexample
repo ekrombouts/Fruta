@@ -1,0 +1,24 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"workbench.colorCustomizations": {
+			"titleBar.activeBackground": "#df83ae", 
+			"titleBar.activeForeground": "#000000"
+		},
+		"jupyter.notebookFileRoot": "${workspaceFolder}/app",
+		"python.analysis.extraPaths": ["${workspaceFolder}/app"],  
+		"terminal.integrated.env.linux": {
+			"PYTHONPATH": "${workspaceFolder}/app"
+		},
+		"terminal.integrated.env.windows": {
+			"PYTHONPATH": "${workspaceFolder}\\app"
+		},
+		"terminal.integrated.env.osx": {
+			"PYTHONPATH": "${workspaceFolder}/app"
+		}
+	}
+}

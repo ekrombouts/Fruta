@@ -1,0 +1,12 @@
+psycopg2-binary
+sqlalchemy
+pandas
+dotenv
+datasets
+pydantic_settings
+openai
+sentence_transformers
+umap-learn
+plotly
+streamlit
+watchdog

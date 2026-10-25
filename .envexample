@@ -1,0 +1,14 @@
+# Database configuratie
+DB_HOST=localhost
+DB_NAME=fruta
+DB_USER=fruta
+DB_PASSWORD=password # Vervang met een zelfgekozen wachtwoord
+DB_PORT=5432
+
+# Configuratie voor LLMs. Vul hier je eigen API-sleutels in.
+# Je kunt OpenAI, Azure OpenAI of Anthropic gebruiken.
+# Zorg dat deze sleutels overeenkomen met wat er in llm_config.py geactiveerd is.
+AZURE_OPENAI_API_KEY=
+AZURE_OPENAI_ENDPOINT=
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
