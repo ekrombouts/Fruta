@@ -11,9 +11,9 @@ class Settings(BaseSettings):
 
     llm: LLMConfig = LLMConfig()
     # openai, azure of sentence_transformer
-    embedding_provider: str = "azure"
+    embedding_provider: str = "openai"
     # openai, azure, anthropic, llama
-    llm_provider: str = "azure"
+    llm_provider: str = "openai"
 
 
 @lru_cache

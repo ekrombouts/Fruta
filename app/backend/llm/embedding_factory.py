@@ -138,7 +138,7 @@ class EmbeddingFactory:
         """Create an embedding provider instance based on the provider name."""
         providers = {
             ## Comment or uncomment the providers you want to use
-            # "openai": OpenAIEmbedder,
+            "openai": OpenAIEmbedder,
             "azure": AzureOpenAIEmbedder,
             "sentence_transformer": SentenceTransformerEmbedder,
         }
