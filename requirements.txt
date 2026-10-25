@@ -11,6 +11,7 @@ pydantic==2.11.3
 pydantic-settings==2.9.0
 pydantic_core==2.33.1
 sentence-transformers==4.1.0
+snowflake-snowpark-python[pandas]==1.55.3
 SQLAlchemy==2.0.40
 streamlit==1.44.1
 umap-learn==0.5.7

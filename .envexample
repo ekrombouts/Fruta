@@ -5,6 +5,11 @@ DB_USER=fruta
 DB_PASSWORD=password # Vervang met een zelfgekozen wachtwoord
 DB_PORT=5432
 
+# Snowflake configuratie
+SNOWFLAKE_ACCOUNT=
+SNOWFLAKE_USER=
+SNOWFLAKE_PASSWORD=
+
 # Configuratie voor LLMs. Vul hier je eigen API-sleutels in.
 # Je kunt OpenAI, Azure OpenAI of Anthropic gebruiken.
 # Zorg dat deze sleutels overeenkomen met wat er in llm_config.py geactiveerd is.
