@@ -31,6 +31,11 @@ st.set_page_config(
 session = st.connection("snowflake", ttl=os.getenv("SNOWFLAKE_CONNECTION_TTL")).session()
 
 
+# Datums staan als tekst in Snowflake, deels met tijdzone ("+00:00") en deels zonder
+def to_date(series):
+    return pd.to_datetime(series, format="ISO8601", utc=True).dt.date
+
+
 @st.cache_data
 def load_profiles():
     return session.table(PROFILES_TABLE).to_pandas()
@@ -49,7 +54,7 @@ def load_records(client_id):
         f"SELECT * FROM {RECORDS_TABLE} WHERE CLIENT_ID = ? ORDER BY DATE",
         params=[client_id],
     ).to_pandas()
-    df["DATE"] = pd.to_datetime(df["DATE"]).dt.date
+    df["DATE"] = to_date(df["DATE"])
     return df
 
 
@@ -141,9 +146,7 @@ def display_scenarios(client_id):
         return
 
     scenarios_df = scenarios_df[["DATE_START_OF_WEEK", "EVENTS_DESCRIPTION"]].copy()
-    scenarios_df["DATE_START_OF_WEEK"] = pd.to_datetime(
-        scenarios_df["DATE_START_OF_WEEK"]
-    ).dt.date
+    scenarios_df["DATE_START_OF_WEEK"] = to_date(scenarios_df["DATE_START_OF_WEEK"])
     scenarios_df = scenarios_df.rename(
         columns={"DATE_START_OF_WEEK": "Week", "EVENTS_DESCRIPTION": "Scenario"}
     )
