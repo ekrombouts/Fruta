@@ -1,20 +1,37 @@
 # Secrets
 .env
+.env.*
+!.env.example
 
-# Python
+# Snowflake (credentials en private keys)
+.snowflake/
+connections.toml
+*.p8
+*.pem
+
+# Python / uv
+# (pyproject.toml, uv.lock en .python-version horen wél in git)
 .venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Jupyter
 .ipynb_checkpoints/
 
 # Gegenereerde output (scripts, plots)
 output/
 
-# Groot UMAP-model (234 MB, te groot voor GitHub); opnieuw te maken met scripts/03_reduce_embeddings.py
+# Groot UMAP-model (234 MB, te groot voor GitHub); opnieuw te maken met notebooks/03_reduce_embeddings.py
 app/backend/models/notes_umap_2d.pkl
 
-# Persoonlijke editorinstellingen (zie Fruta.code-workspaceexample)
-Fruta.code-workspace
+# Persoonlijke editorinstellingen
+*.code-workspace
 
 # macOS
 .DS_Store
