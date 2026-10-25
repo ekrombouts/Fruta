@@ -11,9 +11,16 @@ PROFILES_TABLE = "FRUTA.PUBLIC.PROFILES"
 SCENARIOS_TABLE = "FRUTA.PUBLIC.SCENARIOS"
 RECORDS_TABLE = "FRUTA.PUBLIC.RECORDS"
 UMAP_TABLE = "FRUTA.PUBLIC.RECORD_UMAP_2D"
+NOTE_UMAP_TABLE = "FRUTA.PUBLIC.NOTE_UMAP_2D"
 
-# Maximaal aantal grijze achtergrondpunten (alle rapportages), om de plot licht te houden
+# Maximaal aantal achtergrondpunten (NOTES), om de plot licht te houden
 MAX_BACKGROUND_POINTS = 5000
+
+# Plotly-kleuren, op alfabetische volgorde van de categorieën; gelijk aan de plots in 03_reduce_embeddings.ipynb
+CATEGORY_COLORS = [
+    "#636EFA", "#EF553B", "#00CC96", "#AB63FA", "#FFA15A",
+    "#19D3F3", "#FF6692", "#B6E880", "#FF97FF", "#FECB52",
+]
 
 st.set_page_config(
     page_title="Fruta Data",
@@ -49,6 +56,11 @@ def load_records(client_id):
 @st.cache_data
 def load_umap():
     return session.table(UMAP_TABLE).to_pandas()
+
+
+@st.cache_data
+def load_note_umap():
+    return session.table(NOTE_UMAP_TABLE).to_pandas()
 
 
 def filter_period(records_df, start_date, end_date):
@@ -155,10 +167,11 @@ def display_embedding_plot(client, records_df, start_date, end_date):
     st.subheader("Visualisatie")
     st.caption(
         "Elke stip is een rapportage, geplaatst op basis van de inhoud: rapportages die op "
-        "elkaar lijken liggen dicht bij elkaar. Grijs: alle rapportages in Fruta. "
-        "Gekleurd: de rapportages van deze cliënt in de gekozen periode."
+        "elkaar lijken liggen dicht bij elkaar. Op de achtergrond, vaag: voorbeeldrapportages "
+        "per onderwerp. Met rand: de rapportages van deze cliënt in de gekozen periode."
     )
     umap_df = load_umap()
+    note_umap_df = load_note_umap()
     client_df = filter_period(records_df, start_date, end_date).merge(
         umap_df, on="NOTE_ID"
     )
@@ -171,13 +184,26 @@ def display_embedding_plot(client, records_df, start_date, end_date):
     x_scale = alt.Scale(domain=[math.floor(umap_df["X"].min()), math.ceil(umap_df["X"].max())])
     y_scale = alt.Scale(domain=[math.floor(umap_df["Y"].min()), math.ceil(umap_df["Y"].max())])
 
-    background_df = umap_df.sample(n=min(len(umap_df), MAX_BACKGROUND_POINTS), random_state=0)
+    categories = sorted(note_umap_df["CATEGORY"].unique())
+    category_scale = alt.Scale(
+        domain=categories,
+        range=[CATEGORY_COLORS[i % len(CATEGORY_COLORS)] for i in range(len(categories))],
+    )
+    background_df = note_umap_df.sample(
+        n=min(len(note_umap_df), MAX_BACKGROUND_POINTS), random_state=0
+    )
     background = (
         alt.Chart(background_df)
-        .mark_circle(size=8, color="lightgray", opacity=0.5)
+        .mark_circle(size=12, opacity=0.25)
         .encode(
             x=alt.X("X", scale=x_scale, title=None),
             y=alt.Y("Y", scale=y_scale, title=None),
+            color=alt.Color(
+                "CATEGORY:N",
+                title="Onderwerp",
+                scale=category_scale,
+                legend=alt.Legend(orient="bottom", columns=4, symbolOpacity=0.6),
+            ),
         )
     )
     client_points = (
@@ -193,7 +219,9 @@ def display_embedding_plot(client, records_df, start_date, end_date):
             ],
         )
     )
-    st.altair_chart((background + client_points).properties(height=600), use_container_width=True)
+    # Twee kleurschalen (onderwerp en datum), elk met een eigen legenda
+    chart = (background + client_points).resolve_scale(color="independent").properties(height=600)
+    st.altair_chart(chart, use_container_width=True)
 
 
 def display_info():
