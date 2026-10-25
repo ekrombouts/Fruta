@@ -1,52 +1,82 @@
-# Import python packages
-import streamlit as st
 import os
 
-# Write directly to the app
-st.title(f"Example Streamlit App :balloon: {st.__version__}")
-st.write(
-  """Replace this example with your own code!
-  **And if you're new to Streamlit,** check
-  out our easy-to-follow guides at
-  [docs.streamlit.io](https://docs.streamlit.io).
-  """
+import streamlit as st
+
+# Volledige namen, zodat de app niet afhangt van de database waarin hij is aangemaakt
+PROFILES_TABLE = "FRUTA.PUBLIC.PROFILES"
+
+st.set_page_config(
+    page_title="Fruta Data",
+    page_icon=":banana:",
+    layout="centered",
 )
 
-st.markdown("""
-- :page_with_curl: [Streamlit open source documentation](https://docs.streamlit.io)
-- :snowflake: [Streamlit in Snowflake documentation](https://docs.snowflake.com/en/developer-guide/streamlit/about-streamlit)
-- :books: [Demo repo with templates](https://github.com/Snowflake-Labs/snowflake-demo-streamlit)
-- :memo: [Streamlit in Snowflake release notes](https://docs.snowflake.com/en/release-notes/streamlit-in-snowflake)
-""")
+session = st.connection("snowflake", ttl=os.getenv("SNOWFLAKE_CONNECTION_TTL")).session()
 
-# Create a database connection to Snowflake
-conn = st.connection("snowflake", ttl=os.getenv("SNOWFLAKE_CONNECTION_TTL"))
-session = conn.session()
 
-# Use an interactive slider to get user input
-hifives_val = st.slider(
-  "Number of high-fives in Q3",
-  min_value=0,
-  max_value=90,
-  value=60,
-  help="Use this to enter the number of high-fives you gave in Q3",
-)
+@st.cache_data
+def load_profiles():
+    return session.table(PROFILES_TABLE).to_pandas()
 
-#  Create an example dataframe
-#  Note: this is just some dummy data, but you can easily connect to your Snowflake data
-#  It is also possible to query data using raw SQL using session.sql() e.g. session.sql("select * from table")
-created_dataframe = session.create_dataframe(
-  [[50, 25, "Q1"], [20, 35, "Q2"], [hifives_val, 30, "Q3"]],
-  schema=["HIGH_FIVES", "FIST_BUMPS", "QUARTER"],
-)
 
-# Execute the query and convert it into a Pandas dataframe
-queried_data = created_dataframe.to_pandas()
+def format_naam(client):
+    titel = "Mevrouw" if client["GESLACHT"] == "v" else "Meneer"
+    return f"{titel} {client['VOORNAAM']} {client['ACHTERNAAM']}"
 
-# Create a simple bar chart
-# See docs.streamlit.io for more types of charts
-st.subheader("Number of high-fives")
-st.bar_chart(data=queried_data, x="QUARTER", y="HIGH_FIVES")
 
-st.subheader("Underlying data")
-st.dataframe(queried_data, use_container_width=True)
+def select_client(profiles_df):
+    col1, col2 = st.columns(2)
+    with col1:
+        selected_ward = st.selectbox(
+            "Selecteer afdeling:", options=profiles_df["WARD"].unique()
+        )
+    with col2:
+        ward_df = profiles_df[profiles_df["WARD"] == selected_ward]
+        client_id = st.selectbox(
+            "Selecteer cliënt:",
+            options=ward_df["CLIENT_ID"],
+            format_func=lambda x: ward_df[ward_df["CLIENT_ID"] == x]["ACHTERNAAM"].values[0],
+        )
+    return profiles_df[profiles_df["CLIENT_ID"] == client_id].iloc[0]
+
+
+def display_client_profile(client):
+    st.subheader(f"Profiel van {format_naam(client)}")
+    st.markdown(
+        f"""
+        | **Kenmerk**         | **Beschrijving**                      |
+        |---------------------|---------------------------------|
+        | **Afdeling**        | {client['WARD']}       |
+        | **Diagnose**        | {client['DIAGNOSE']} |
+        | **Somatiek**        | {client['SOMATIEK']}   |
+        | **ADL**             | {client['ADL']}        |
+        | **Mobiliteit**      | {client['MOBILITEIT']}   |
+        | **Gedrag**          | {client['GEDRAG']}   |
+        """
+    )
+    st.markdown("---")
+    st.caption(
+        "Over de synthetische data: met welk model de rapportages en scenario's van deze cliënt "
+        "zijn gegenereerd, en de instellingen van het scenario."
+    )
+    st.markdown(
+        f"<small>**Cliënt ID:** {client['CLIENT_ID']}  |  "
+        f"**Model:** {client['MODEL']}  |  "
+        f"**Startdatum in zorg:** {client['START_DATE']}  |  "
+        f"**Aantal weken in zorg:** {client['DURATION']}  |  "
+        f"**Complicaties:** {client['COMPLICATIONS']}</small>",
+        unsafe_allow_html=True,
+    )
+
+
+st.title("🍎 Fruta Dashboard 🍎")
+
+with st.spinner("Data laden..."):
+    profiles_df = load_profiles()
+
+client = select_client(profiles_df)
+
+(tab1,) = st.tabs(["Cliëntprofiel"])
+
+with tab1:
+    display_client_profile(client)
