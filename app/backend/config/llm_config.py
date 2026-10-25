@@ -24,7 +24,7 @@ class LLMProviderSettings(BaseSettings):
 class OpenAISettings(LLMProviderSettings):
     api_key: str | None = os.getenv("OPENAI_API_KEY")
 
-    default_model: str = "gpt-4o-mini-2024-07-18"
+    default_model: str = "gpt-6-luna"
 
     embedding_model: str = "text-embedding-3-small"
     embedding_dimension: int = 1536

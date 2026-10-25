@@ -39,8 +39,12 @@ class OpenAIProvider(LLMProvider):
         completion_params = {
             "model": kwargs.get("model", self.settings.default_model),
             "temperature": kwargs.get("temperature", self.settings.temperature),
+            # "none" houdt gedrag en kosten vergelijkbaar en laat temperature werken
+            "reasoning_effort": kwargs.get("reasoning_effort", "none"),
             "max_retries": kwargs.get("max_retries", self.settings.max_retries),
-            "max_tokens": kwargs.get("max_tokens", self.settings.max_tokens),
+            "max_completion_tokens": kwargs.get(
+                "max_completion_tokens", self.settings.max_tokens
+            ),
             "response_model": response_model,
             "messages": messages,
         }
