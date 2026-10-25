@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 from backend.database.fruta_queries import FrutaClient, FrutaClients
+from backend.services.client_qa import ClientQA
 from backend.services.fall_risk_analyzer import FallRiskAnalyzer
 from backend.services.generate_client_embedding_plot import create_client_embedding_plot
 from dotenv import load_dotenv
@@ -34,13 +35,14 @@ def main():
 
     selected_start_date, selected_end_date = select_date_range_sidebar(client_records)
 
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
         [
             "Cliëntprofiel",
             "Scenario",
             "Rapportages",
             "Visualisatie",
             "Valrisico",
+            "Vraag",
             "Info",
         ]
     )
@@ -63,15 +65,16 @@ def main():
             display_fall_risk(Fruta_client, selected_start_date, selected_end_date)
 
     with tab6:
+        display_client_qa(Fruta_client, selected_start_date, selected_end_date)
+
+    with tab7:
         st.subheader("ℹ️ Informatie")
-        st.markdown(
-            f"""
+        st.markdown(f"""
             Deze app toont FrutaData, een fictieve zorgdatabase van verpleeghuis Fruta.
 De volledig synthetische data bevatten cliëntprofielen, scenario’s en automatisch gegenereerde zorgrapportages. Ze bieden een veilige testomgeving voor AI in de langdurige zorg.
 
 De app en dataset vormen onderdeel van mijn leerproces. De code kan rommelig zijn en commentaar is niet altijd netjes, aanwezig of in de juiste taal. 
-"""
-        )
+""")
 
 
 def select_client(clients_df):
@@ -209,6 +212,58 @@ def display_fall_risk(Fruta_client, selected_start_date, selected_end_date):
         st.markdown("#### Overwegingen LLM:")
         for i, gedachte in enumerate(result.gedachtengang, 1):
             st.markdown(f"{i}. {gedachte}")
+
+
+def display_client_qa(Fruta_client, selected_start_date, selected_end_date):
+    st.subheader(f"Vraag over {Fruta_client.naam}")
+    question = st.text_input(
+        "Stel een vraag:", placeholder="Bijvoorbeeld: Hoe gaat het met eten en drinken?"
+    )
+    limit = st.slider("Aantal op te halen rapportages:", 3, 20, 8)
+
+    if st.button("Stel vraag") and question:
+        with st.spinner("Rapportages zoeken en antwoord genereren..."):
+            qa = ClientQA(
+                client=Fruta_client,
+                start_date=selected_start_date,
+                end_date=selected_end_date,
+                limit=limit,
+            )
+            result = qa.ask(question)
+
+        # Antwoord
+        st.markdown("#### Antwoord:")
+        if result.voldoende_informatie:
+            st.markdown(result.antwoord)
+        else:
+            st.warning(result.antwoord)
+
+        # Bronnen die de LLM zegt te hebben gebruikt
+        st.markdown("#### Bronnen:")
+        bronnen = qa.context[qa.context["nr"].isin(result.bronnen)]
+        if bronnen.empty:
+            st.markdown("_Geen rapportages gebruikt._")
+        for _, row in bronnen.iterrows():
+            st.markdown(f"- **[{row['nr']}] {row['date']}**: {row['content']}")
+
+        # Wat er onderweg gebeurde
+        with st.expander("Achter de schermen"):
+            st.markdown(
+                "**Stap 1 + 2: opgehaalde rapportages**, op volgorde van datum. "
+                "Hoe kleiner de afstand, hoe meer de rapportage op de vraag lijkt."
+            )
+            st.dataframe(
+                qa.context[["nr", "date", "distance", "content"]], hide_index=True
+            )
+
+            st.markdown("**Stap 3: prompt naar de LLM**")
+            for message in qa.messages:
+                st.markdown(f"_{message['role']}_")
+                st.code(message["content"], language=None, wrap_lines=True)
+
+            st.markdown(
+                f"**Tokens:** {qa.usage.prompt_tokens} in, {qa.usage.completion_tokens} uit"
+            )
 
 
 if __name__ == "__main__":

@@ -127,10 +127,9 @@ Je taak is om een inschatting te maken van het valrisico op basis van relevante 
         return LLMResponse(**response_parsed.model_dump()), response_raw
 
     def analyze(self) -> LLMResponse:
-        # query_vector = self._get_query_embedding(
-        #     "valrisico, valincidenten. Client is gevallen."
-        # )
-        query_vector = self._get_topic_embedding("valrisico")
+        query_vector = self._get_query_embedding(
+            "valrisico, valincidenten. Client is gevallen."
+        )
 
         self.context = self._get_context(query_vector)
         messages = self._generate_prompt(self.context)
