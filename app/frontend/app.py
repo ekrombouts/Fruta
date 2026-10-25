@@ -57,18 +57,18 @@ def main():
         display_reports(Fruta_client, selected_start_date, selected_end_date)
 
     with tab4:
-        if st.button("📊 Toon embedding plot"):
+        if st.button("Toon embedding plot"):
             display_client_embedding_plot(client_id)
 
     with tab5:
-        if st.button("⚠️ Start valrisico-analyse"):
+        if st.button("Start valrisico-analyse"):
             display_fall_risk(Fruta_client, selected_start_date, selected_end_date)
 
     with tab6:
         display_client_qa(Fruta_client, selected_start_date, selected_end_date)
 
     with tab7:
-        st.subheader("ℹ️ Informatie")
+        st.subheader("Informatie")
         st.markdown(f"""
             Deze app toont FrutaData, een fictieve zorgdatabase van verpleeghuis Fruta.
 De volledig synthetische data bevatten cliëntprofielen, scenario’s en automatisch gegenereerde zorgrapportages. Ze bieden een veilige testomgeving voor AI in de langdurige zorg.
@@ -95,7 +95,7 @@ def select_client(clients_df):
 
 
 def display_client_profile(Fruta_client):
-    st.subheader(f"🪪 Profiel van {Fruta_client.naam}")
+    st.subheader(f"Profiel van {Fruta_client.naam}")
     st.markdown(
         f"""
         | **Kenmerk**         | **Beschrijving**                      |
@@ -110,6 +110,11 @@ def display_client_profile(Fruta_client):
         unsafe_allow_html=True,
     )
     st.markdown("---")
+    st.caption(
+        "Over de synthetische data: met welk model de rapportages en scenario's van deze cliënt "
+        "zijn gegenereerd, en de instellingen van het scenario. Dit is niet het model dat de app "
+        "gebruikt voor de valrisico-analyse en het beantwoorden van vragen."
+    )
     st.markdown(
         f"<small>**Cliënt ID:** {Fruta_client.client_id}  |  "
         f"**Model:** {Fruta_client.model}  |  "
@@ -121,7 +126,7 @@ def display_client_profile(Fruta_client):
 
 
 def display_scenarios(Fruta_client):
-    st.subheader("🎮 Scenario")
+    st.subheader("Scenario")
     client_scenarios = Fruta_client.get_scenario()
     if not client_scenarios.empty:
         scenarios_df = client_scenarios[
@@ -142,7 +147,7 @@ def display_scenarios(Fruta_client):
 
 
 def display_reports(Fruta_client, selected_start_date, selected_end_date):
-    st.subheader("📋 Rapportages")
+    st.subheader("Rapportages")
     if selected_start_date and selected_end_date:
         st.markdown("#### Rapportages")
         client_notes = Fruta_client.get_notes(
