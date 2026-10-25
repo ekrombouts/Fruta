@@ -1,6 +1,8 @@
 import datetime as dt
+import math
 import os
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -8,6 +10,10 @@ import streamlit as st
 PROFILES_TABLE = "FRUTA.PUBLIC.PROFILES"
 SCENARIOS_TABLE = "FRUTA.PUBLIC.SCENARIOS"
 RECORDS_TABLE = "FRUTA.PUBLIC.RECORDS"
+UMAP_TABLE = "FRUTA.PUBLIC.RECORD_UMAP_2D"
+
+# Maximaal aantal grijze achtergrondpunten (alle rapportages), om de plot licht te houden
+MAX_BACKGROUND_POINTS = 5000
 
 st.set_page_config(
     page_title="Fruta Data",
@@ -38,6 +44,17 @@ def load_records(client_id):
     ).to_pandas()
     df["DATE"] = pd.to_datetime(df["DATE"]).dt.date
     return df
+
+
+@st.cache_data
+def load_umap():
+    return session.table(UMAP_TABLE).to_pandas()
+
+
+def filter_period(records_df, start_date, end_date):
+    return records_df[
+        (records_df["DATE"] >= start_date) & (records_df["DATE"] <= end_date)
+    ]
 
 
 def format_naam(client):
@@ -125,15 +142,58 @@ def display_scenarios(client_id):
 
 def display_reports(records_df, start_date, end_date):
     st.subheader("Rapportages")
-    period_df = records_df[
-        (records_df["DATE"] >= start_date) & (records_df["DATE"] <= end_date)
-    ]
+    period_df = filter_period(records_df, start_date, end_date)
     if period_df.empty:
         st.info("Geen rapportages gevonden voor de opgegeven periode.")
         return
 
     for _, row in period_df.iterrows():
         st.markdown(f"- **{row['DATE']}**: {row['NOTE']}")
+
+
+def display_embedding_plot(client, records_df, start_date, end_date):
+    st.subheader("Visualisatie")
+    st.caption(
+        "Elke stip is een rapportage, geplaatst op basis van de inhoud: rapportages die op "
+        "elkaar lijken liggen dicht bij elkaar. Grijs: alle rapportages in Fruta. "
+        "Gekleurd: de rapportages van deze cliënt in de gekozen periode."
+    )
+    umap_df = load_umap()
+    client_df = filter_period(records_df, start_date, end_date).merge(
+        umap_df, on="NOTE_ID"
+    )
+    if client_df.empty:
+        st.info("Geen rapportages gevonden voor de opgegeven periode.")
+        return
+    client_df["DATUM"] = pd.to_datetime(client_df["DATE"])
+
+    # Vaste assen over alle rapportages, zodat de plot per cliënt niet verspringt
+    x_scale = alt.Scale(domain=[math.floor(umap_df["X"].min()), math.ceil(umap_df["X"].max())])
+    y_scale = alt.Scale(domain=[math.floor(umap_df["Y"].min()), math.ceil(umap_df["Y"].max())])
+
+    background_df = umap_df.sample(n=min(len(umap_df), MAX_BACKGROUND_POINTS), random_state=0)
+    background = (
+        alt.Chart(background_df)
+        .mark_circle(size=8, color="lightgray", opacity=0.5)
+        .encode(
+            x=alt.X("X", scale=x_scale, title=None),
+            y=alt.Y("Y", scale=y_scale, title=None),
+        )
+    )
+    client_points = (
+        alt.Chart(client_df)
+        .mark_circle(size=70, opacity=0.9, stroke="#103C6D", strokeWidth=1)
+        .encode(
+            x="X",
+            y="Y",
+            color=alt.Color("DATUM:T", title="Datum", scale=alt.Scale(scheme="viridis")),
+            tooltip=[
+                alt.Tooltip("DATUM:T", title="Datum", format="%d-%m-%Y"),
+                alt.Tooltip("NOTE", title="Rapportage"),
+            ],
+        )
+    )
+    st.altair_chart((background + client_points).properties(height=600), use_container_width=True)
 
 
 def display_info():
@@ -159,7 +219,9 @@ client = select_client(profiles_df)
 records_df = load_records(client["CLIENT_ID"])
 start_date, end_date = select_date_range_sidebar(records_df)
 
-tab1, tab2, tab3, tab4 = st.tabs(["Cliëntprofiel", "Scenario", "Rapportages", "Info"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    ["Cliëntprofiel", "Scenario", "Rapportages", "Visualisatie", "Info"]
+)
 
 with tab1:
     display_client_profile(client)
@@ -171,4 +233,7 @@ with tab3:
     display_reports(records_df, start_date, end_date)
 
 with tab4:
+    display_embedding_plot(client, records_df, start_date, end_date)
+
+with tab5:
     display_info()
