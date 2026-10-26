@@ -1,0 +1,11 @@
+-- Eenmalige setup voor Fruta in Snowflake.
+-- Uitvoeren in een SQL-worksheet in Snowsight.
+
+USE ROLE ACCOUNTADMIN;
+
+CREATE DATABASE IF NOT EXISTS FRUTA;
+
+CREATE WAREHOUSE IF NOT EXISTS COMPUTE_WH
+  WAREHOUSE_SIZE = XSMALL
+  AUTO_SUSPEND = 60
+  AUTO_RESUME = TRUE;
